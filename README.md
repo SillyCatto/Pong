@@ -1,4 +1,4 @@
-run build.bat to build the executable
+Run build.bat to build the executable
 
 ```
 Controls
