@@ -4,31 +4,33 @@
 
 struct Ball
 {
-    float x, y;
-    float speedX, speedY;
+    Vector2 position;
+    Vector2 speed;
     float radius;
 
     void Draw()
     {
-        DrawCircle(x, y, radius, WHITE);
+        DrawCircle(position.x, position.y, radius, WHITE);
     }
 };
 
 struct Bar
 {
-    float x, y;
+    Vector2 position;
 
     Rectangle GetRect()
     {
-        return Rectangle {x - 10 / 2, y - 100 / 2, 10, 100};
+        return Rectangle {position.x - 10 / 2, position.y - 100 / 2, 10, 100};
     }
 
-    void Draw(Color color) {
+    void Draw(Color color)
+    {
         DrawRectangleRec(GetRect(), color);
     }
 };
 
-Color GetColor(const char* text) {
+Color GetColor(const char* text)
+{
 
     std::string str(text);
     if(str == "RED Wins!") {
@@ -65,105 +67,104 @@ int main()
     SetMasterVolume(0.9f);
 
     Ball ball;
-    ball.x = GetScreenWidth() / 2;
-    ball.y = GetScreenHeight() / 2;
-    //ball.speedX = 200;
+    ball.position.x = GetScreenWidth() / 2;
+    ball.position.y = GetScreenHeight() / 2;
 
     //randomize ball direction at start (towards blue or towards red)
     if (randBool)
     {
-        ball.speedX = 200;
+        ball.speed.x = 200;
     }
     else
     {
-        ball.speedX = -200;
+        ball.speed.x = -200;
     }
 
-    ball.speedY = 300;
-    ball.radius = 7.0f;
+    ball.speed.y = 300;
+    ball.radius = 6.0f;
 
     Bar leftBar;
-    leftBar.x = 40;
-    leftBar.y = GetScreenHeight() / 2;
+    leftBar.position.x = 40;
+    leftBar.position.y = GetScreenHeight() / 2;
 
     Bar rightBar;
-    rightBar.x = GetScreenWidth() - 40;
-    rightBar.y = GetScreenHeight() / 2;
+    rightBar.position.x = GetScreenWidth() - 40;
+    rightBar.position.y = GetScreenHeight() / 2;
 
     while (!WindowShouldClose())
     {
         //update ball position
-        ball.x += ball.speedX * GetFrameTime();
-        ball.y += ball.speedY * GetFrameTime();
+        ball.position.x += ball.speed.x * GetFrameTime();
+        ball.position.y += ball.speed.y * GetFrameTime();
 
-        if ((ball.y + ball.radius) < 0)
+        if ((ball.position.y + ball.radius) < 0)
 		{
-			ball.y = 0;
-			ball.speedY*= -1;
+			ball.position.y = 10;
+			ball.speed.y*= -1;
 		}
 
-		if ((ball.y - ball.radius) > screenH)
+		if ((ball.position.y - ball.radius) > screenH)
 		{
-			ball.y = screenH;
-			ball.speedY *= -1;
+			ball.position.y = 590;
+			ball.speed.y *= -1;
 		}
 
         //Control left bar
         if(IsKeyDown(KEY_W))
         {
-            leftBar.y -= barSpeed * GetFrameTime();
+            leftBar.position.y -= barSpeed * GetFrameTime();
         }
 
         if(IsKeyDown(KEY_S))
         {
-            leftBar.y += barSpeed * GetFrameTime();
+            leftBar.position.y += barSpeed * GetFrameTime();
         }
 
         //Control right bar
         if(IsKeyDown(KEY_UP))
         {
-            rightBar.y -= barSpeed * GetFrameTime();
+            rightBar.position.y -= barSpeed * GetFrameTime();
         }
 
         if(IsKeyDown(KEY_DOWN))
         {
-            rightBar.y += barSpeed * GetFrameTime();
+            rightBar.position.y += barSpeed * GetFrameTime();
         }
 
-        //Collision detection
-        if(CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, leftBar.GetRect()))
+        //Collision: ball with bars
+        if(CheckCollisionCircleRec(Vector2{ball.position.x, ball.position.y}, ball.radius, leftBar.GetRect()))
         {
             PlaySound(hit);
-            if(ball.speedX < 0)
+            if(ball.speed.x < 0)
             {
-                ball.speedX *= -1;
+                ball.speed.x *= -1;
             }
         }
 
-        if(CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, rightBar.GetRect()))
+        if(CheckCollisionCircleRec(Vector2{ball.position.x, ball.position.y}, ball.radius, rightBar.GetRect()))
         {
             PlaySound(hit);
-            if(ball.speedX > 0)
+            if(ball.speed.x > 0)
             {
-                ball.speedX *= -1;
+                ball.speed.x *= -1;
             }
         }
 
         //Set Winner
-        if(ball.x < 20)
+        if(ball.position.x < 20)
         {
             winner = "BLUE Wins!";
-            if ((ball.x < 20) && scoreUpdate)
+            if ((ball.position.x < 20) && scoreUpdate)
             {
                 blueS += 1;
                 scoreUpdate = false;
             }
         }
 
-        if(ball.x > 780)
+        if(ball.position.x > 780)
         {
             winner = "RED Wins!";
-            if ((ball.x > 780) && scoreUpdate)
+            if ((ball.position.x > 780) && scoreUpdate)
             {
                 redS += 1;
                 scoreUpdate = false;
@@ -173,10 +174,10 @@ int main()
         //Restart
         if(winner && IsKeyPressed(KEY_SPACE))
         {
-            ball.x = GetScreenWidth() / 2;
-            ball.y = GetScreenHeight() / 2;
-            leftBar.y = GetScreenHeight() / 2;
-            rightBar.y = GetScreenHeight() / 2;
+            ball.position.x = GetScreenWidth() / 2;
+            ball.position.y = GetScreenHeight() / 2;
+            leftBar.position.y = GetScreenHeight() / 2;
+            rightBar.position.y = GetScreenHeight() / 2;
             winner = nullptr;
             scoreUpdate = true;
             randBool = (std::rand() % 2);
