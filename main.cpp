@@ -98,16 +98,16 @@ int main()
         ball.position.y += ball.speed.y * GetFrameTime();
 
         if ((ball.position.y + ball.radius) < 0)
-		{
-			ball.position.y = 10;
-			ball.speed.y*= -1;
-		}
+        {
+            ball.position.y = 10;
+            ball.speed.y*= -1;
+        }
 
-		if ((ball.position.y - ball.radius) > screenH)
-		{
-			ball.position.y = 590;
-			ball.speed.y *= -1;
-		}
+        if ((ball.position.y - ball.radius) > screenH)
+        {
+            ball.position.y = 590;
+            ball.speed.y *= -1;
+        }
 
         //Control left bar
         if(IsKeyDown(KEY_W))
