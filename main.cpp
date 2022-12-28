@@ -50,15 +50,36 @@ int main()
     int blueS = 0;
     bool scoreUpdate = true;
 
+    //random bool for ball direction
+    std::srand(time(0));
+    bool randBool{};
+    randBool = (std::rand() % 2);
 
+    //init window
     InitWindow(screenW, screenH, "Pong");
     SetWindowState(FLAG_VSYNC_HINT);
+
+    //init and load sound
+    InitAudioDevice();
+    Sound hit = LoadSound("./assets/sound/hit.mp3");
+    SetMasterVolume(0.9f);
 
     Ball ball;
     ball.x = GetScreenWidth() / 2;
     ball.y = GetScreenHeight() / 2;
-    ball.speedX = 190;
-    ball.speedY = 290;
+    //ball.speedX = 200;
+
+    //randomize ball direction at start (towards blue or towards red)
+    if (randBool)
+    {
+        ball.speedX = 200;
+    }
+    else
+    {
+        ball.speedX = -200;
+    }
+
+    ball.speedY = 300;
     ball.radius = 7.0f;
 
     Bar leftBar;
@@ -112,6 +133,7 @@ int main()
         //Collision detection
         if(CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, leftBar.GetRect()))
         {
+            PlaySound(hit);
             if(ball.speedX < 0)
             {
                 ball.speedX *= -1;
@@ -120,6 +142,7 @@ int main()
 
         if(CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, rightBar.GetRect()))
         {
+            PlaySound(hit);
             if(ball.speedX > 0)
             {
                 ball.speedX *= -1;
@@ -156,14 +179,12 @@ int main()
             rightBar.y = GetScreenHeight() / 2;
             winner = nullptr;
             scoreUpdate = true;
+            randBool = (std::rand() % 2);
         }
-
 
         BeginDrawing();
 
             ClearBackground(BLACK);
-
-            //DrawFPS(5, 5);
 
             //draw ball
             ball.Draw();
@@ -171,7 +192,7 @@ int main()
             leftBar.Draw(RED);
             rightBar.Draw(BLUE);
 
-            //Declare winner
+            //Declare winner and show score
             if(winner)
             {
                 std::string redScore = std::to_string(redS);
@@ -179,9 +200,9 @@ int main()
 
                 DrawText(winner, 305, GetScreenHeight() / 2 - 20, 30, GetColor(winner));
 
-                DrawText(redScore.c_str(), 310, 200, 50, RED);
-                DrawText(" - ", 340, 200, 50, WHITE);
-                DrawText(blueScore.c_str(), 410, 200, 50, BLUE);
+                DrawText(redScore.c_str(), 320, 200, 50, RED);
+                DrawText(" - ", 350, 200, 50, WHITE);
+                DrawText(blueScore.c_str(), 420, 200, 50, BLUE);
 
                 DrawText("Press SPACE ro restart", 250, 400, 20, WHITE);
             }
@@ -189,6 +210,8 @@ int main()
         EndDrawing();
     }
 
+    UnloadSound(hit);
+    CloseAudioDevice();
     CloseWindow();
 
     return 0;
