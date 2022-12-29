@@ -73,11 +73,11 @@ int main()
     //randomize ball direction at start (towards blue or towards red)
     if (randBool)
     {
-        ball.speed.x = 200;
+        ball.speed.x = 230;
     }
     else
     {
-        ball.speed.x = -200;
+        ball.speed.x = -230;
     }
 
     ball.speed.y = 300;
@@ -97,15 +97,15 @@ int main()
         ball.position.x += ball.speed.x * GetFrameTime();
         ball.position.y += ball.speed.y * GetFrameTime();
 
-        if ((ball.position.y + ball.radius) < 0)
+        if ((ball.position.y - ball.radius) < 0)
         {
-            ball.position.y = 10;
-            ball.speed.y*= -1;
+            ball.position.y = 6.0f;
+            ball.speed.y *= -1;
         }
 
-        if ((ball.position.y - ball.radius) > screenH)
+        if ((ball.position.y + ball.radius) > screenH)
         {
-            ball.position.y = 590;
+            ball.position.y = 594.0f;
             ball.speed.y *= -1;
         }
 
@@ -113,22 +113,38 @@ int main()
         if(IsKeyDown(KEY_W))
         {
             leftBar.position.y -= barSpeed * GetFrameTime();
+            if (leftBar.position.y < 50)
+            {
+                leftBar.position.y = 50;
+            }
         }
 
         if(IsKeyDown(KEY_S))
         {
             leftBar.position.y += barSpeed * GetFrameTime();
+            if (leftBar.position.y > 550)
+            {
+                leftBar.position.y = 550;
+            }
         }
 
         //Control right bar
         if(IsKeyDown(KEY_UP))
         {
             rightBar.position.y -= barSpeed * GetFrameTime();
+            if (rightBar.position.y < 50)
+            {
+                rightBar.position.y = 50;
+            }
         }
 
         if(IsKeyDown(KEY_DOWN))
         {
             rightBar.position.y += barSpeed * GetFrameTime();
+            if (rightBar.position.y > 550)
+            {
+                rightBar.position.y = 550;
+            }
         }
 
         //Collision: ball with bars
