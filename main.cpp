@@ -46,7 +46,7 @@ int main()
 {
     const int screenW = 800;
     const int screenH = 600;
-    const int barSpeed = 300;
+    const int barSpeed = 330;
     const char* winner = nullptr;
     int redS = 0;
     int blueS = 0;
@@ -73,11 +73,11 @@ int main()
     //randomize ball direction at start (towards blue or towards red)
     if (randBool)
     {
-        ball.speed.x = 230;
+        ball.speed.x = 200;
     }
     else
     {
-        ball.speed.x = -230;
+        ball.speed.x = -200;
     }
 
     ball.speed.y = 300;
@@ -153,7 +153,8 @@ int main()
             PlaySound(hit);
             if(ball.speed.x < 0)
             {
-                ball.speed.x *= -1;
+                ball.speed.x *= -1.08f;
+                ball.speed.y = (ball.position.y - leftBar.position.y) / 50 * ball.speed.x;
             }
         }
 
@@ -162,7 +163,8 @@ int main()
             PlaySound(hit);
             if(ball.speed.x > 0)
             {
-                ball.speed.x *= -1;
+                ball.speed.x *= -1.08f;
+                ball.speed.y = (ball.position.y - rightBar.position.y) / 50 * -ball.speed.x;
             }
         }
 
@@ -190,13 +192,29 @@ int main()
         //Restart
         if(winner && IsKeyPressed(KEY_SPACE))
         {
+            // reset ball position
             ball.position.x = GetScreenWidth() / 2;
             ball.position.y = GetScreenHeight() / 2;
+
+            //reset bar position
             leftBar.position.y = GetScreenHeight() / 2;
             rightBar.position.y = GetScreenHeight() / 2;
+
+            //reset bools and winner
             winner = nullptr;
             scoreUpdate = true;
             randBool = (std::rand() % 2);
+
+            //reset ball speed
+            ball.speed.y = 300;
+            if (randBool)
+            {
+                ball.speed.x = 200;
+            }
+            else
+            {
+                ball.speed.x = -200;
+            }
         }
 
         BeginDrawing();
