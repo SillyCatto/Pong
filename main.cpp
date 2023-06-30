@@ -16,12 +16,12 @@ struct Bar
 {
   Vector2 position;
 
-  Rectangle GetRect()
+  Rectangle GetSize()
   {
     return Rectangle{position.x - 10 / 2, position.y - 100 / 2, 10, 100};
   }
 
-  void Draw(Color color) { DrawRectangleRec(GetRect(), color); }
+  void Draw(Color color) { DrawRectangleRec(GetSize(), color); }
 };
 
 enum GameScreen
@@ -71,27 +71,25 @@ int main()
   // random bool for ball direction
   std::srand(time(0));
   bool random_bool{};
-  // mod by 2 gives 0 or 1 which acts as true or false for ball direction
-  random_bool = (std::rand() % 2);
+  random_bool = (std::rand() % 2); // mod by 2 gives 0 or 1 which acts as true or false for ball direction
 
   // init window
+  SetConfigFlags(FLAG_VSYNC_HINT);
   InitWindow(screen_width, screen_height, "Pong");
-  SetWindowState(FLAG_VSYNC_HINT);
+  SetTargetFPS(144);
 
   // init game state
   GameScreen current_screen = TITLE;
 
-  // init and load sound
+  // ----------init and load sound----------
   InitAudioDevice();
   Sound hit = LoadSound("./assets/sound/hit.mp3");
   Music title = LoadMusicStream("./assets/sound/title.mp3");
-
-  // set volume
   SetMasterVolume(0.9f);
   // play title screen music
   PlayMusicStream(title);
 
-  // init ball
+  // ----------init ball----------
   Ball ball;
   ball.position.x = GetScreenWidth() / 2;
   ball.position.y = GetScreenHeight() / 2;
@@ -118,6 +116,7 @@ int main()
   rightBar.position.x = GetScreenWidth() - 40;
   rightBar.position.y = GetScreenHeight() / 2;
 
+  // ----------game loop----------
   while (!WindowShouldClose())
   {
     // Update music buffer with new stream data
@@ -141,19 +140,21 @@ int main()
       ball.position.x += ball.speed.x * GetFrameTime();
       ball.position.y += ball.speed.y * GetFrameTime();
 
+      // ----------check collision with the top----------
       if ((ball.position.y - ball.radius) < 0)
       {
         ball.position.y = 6.0f;
         ball.speed.y *= -1;
       }
 
+      // ----------check collision with the bottom----------
       if ((ball.position.y + ball.radius) > screen_height)
       {
         ball.position.y = 594.0f;
         ball.speed.y *= -1;
       }
 
-      // Control left bar
+      // ----------control left bar----------
       if (IsKeyDown(KEY_W))
       {
         leftBar.position.y -= bar_speed * GetFrameTime();
@@ -172,7 +173,7 @@ int main()
         }
       }
 
-      // Control right bar
+      // ----------control right bar----------
       if (IsKeyDown(KEY_UP))
       {
         rightBar.position.y -= bar_speed * GetFrameTime();
@@ -191,8 +192,8 @@ int main()
         }
       }
 
-      // Collision: ball with bars
-      if (CheckCollisionCircleRec(Vector2{ball.position.x, ball.position.y}, ball.radius, leftBar.GetRect()))
+      // ----------collision: ball with bars----------
+      if (CheckCollisionCircleRec(Vector2{ball.position.x, ball.position.y}, ball.radius, leftBar.GetSize()))
       {
         PlaySound(hit);
         if (ball.speed.x < 0)
@@ -202,7 +203,7 @@ int main()
         }
       }
 
-      if (CheckCollisionCircleRec(Vector2{ball.position.x, ball.position.y}, ball.radius, rightBar.GetRect()))
+      if (CheckCollisionCircleRec(Vector2{ball.position.x, ball.position.y}, ball.radius, rightBar.GetSize()))
       {
         PlaySound(hit);
         if (ball.speed.x > 0)
@@ -212,7 +213,7 @@ int main()
         }
       }
 
-      // Set Winner
+      // ----------set winner----------
       if (ball.position.x < 20)
       {
         winner = "BLUE Wins!";
@@ -233,7 +234,7 @@ int main()
         }
       }
 
-      // Restart
+      // ----------reset----------
       if (winner && IsKeyPressed(KEY_SPACE))
       {
         // reset ball position
@@ -262,7 +263,7 @@ int main()
       }
     }
 
-    // Draw to the screen
+    // ----------drawing----------
     BeginDrawing();
 
     ClearBackground(BLACK);
@@ -285,6 +286,8 @@ int main()
       leftBar.Draw(RED);
       rightBar.Draw(BLUE);
 
+      DrawFPS(10, 10);
+
       // Declare winner and show score
       if (winner)
       {
@@ -299,11 +302,10 @@ int main()
     EndDrawing();
   }
 
-  // unload sounds
+  // ----------unload and close----------
   UnloadSound(hit);
   UnloadMusicStream(title);
 
-  // close
   CloseAudioDevice();
   CloseWindow();
 
