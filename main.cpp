@@ -1,219 +1,234 @@
 #include <iostream>
 #include <string>
+#include <string.h>
 
 #include "raylib.h"
 
-struct Ball
+class Ball
 {
+public:
     Vector2 position;
-    Vector2 speed;
-    float radius;
+    Vector2 velocity;
+    const float radius = 6.0f;
 
-    void Draw() { DrawCircle(position.x, position.y, radius, WHITE); }
-};
-
-struct Bar
-{
-    Vector2 position;
-
-    Rectangle GetSize()
+    Vector2 RandomizeDirection()
     {
-        return Rectangle{position.x - 10 / 2, position.y - 100 / 2, 10, 100};
+        velocity.x = 250;
+        velocity.y = GetRandomValue(50, 400);
+
+        // get a random value 0,1,2 or 3 for 4 quadrants
+        int quadrant = (GetRandomValue(4, 7) % 4);
+
+        // set ball direction according to the quadrants
+        if (quadrant == 0)
+        {
+            velocity.y *= -1.0f;
+        }
+        else if (quadrant == 1)
+        {
+            velocity.x *= -1.0f;
+            velocity.y *= -1.0f;
+        }
+        else if (quadrant == 2)
+        {
+            velocity.x *= -1.0f;
+        }
+
+        return velocity;
     }
 
+    void Init()
+    {
+        position.x = GetScreenWidth() / 2;
+        position.y = GetScreenHeight() / 2;
+
+        // randomize ball direction at start (towards blue or towards red)
+        velocity = RandomizeDirection();
+    }
+
+    void Draw() { DrawCircle(position.x, position.y, radius, WHITE); }
+
+    void Update()
+    {
+        position.x += velocity.x * GetFrameTime();
+        position.y += velocity.y * GetFrameTime();
+    }
+
+    void Bounce() { velocity.y *= -1.0f; }
+};
+
+class Bar
+{
+private:
+    const int bar_speed = 350;
+
+public:
+    Vector2 position;
+
+    Rectangle GetSize() { return Rectangle{position.x - 10 / 2, position.y - 100 / 2, 10, 100}; }
+
     void Draw(Color color) { DrawRectangleRec(GetSize(), color); }
+
+    void Init(int pos_x, int pos_y)
+    {
+        this->position.x = pos_x;
+        this->position.y = pos_y;
+    }
+
+    void MoveUp()
+    {
+        position.y -= bar_speed * GetFrameTime();
+        if (position.y < 50)
+        {
+            position.y = 50;
+        }
+    }
+
+    void MoveDown()
+    {
+        position.y += bar_speed * GetFrameTime();
+        if (position.y > 550)
+        {
+            position.y = 550;
+        }
+    }
+
+    void Reset() { position.y = GetScreenHeight() / 2; }
 };
 
 enum GameScreen
 {
     TITLE = 0,
-    GAMEPLAY
+    GAMEPLAY,
+    PAUSED
 };
 
-Color GetColor(const char *text)
+Color GetColor(const char *winner_call)
 {
-    std::string str(text);
-    if (str == "RED Wins!")
+    if (TextIsEqual(winner_call, "RED Wins!"))
     {
         return RED;
     }
-    if (str == "BLUE Wins!")
+    if (TextIsEqual(winner_call, "BLUE Wins!"))
     {
         return BLUE;
     }
     return BLACK;
 }
 
-void DeclareWinner(const char *winner, int redS, int blueS)
-{
-    std::string red_score = std::to_string(redS);
-    std::string blue_score = std::to_string(blueS);
-
-    DrawText(winner, 305, GetScreenHeight() / 2 - 20, 30, GetColor(winner));
-
-    DrawText(red_score.c_str(), 320, 200, 50, RED);
-    DrawText(" - ", 350, 200, 50, WHITE);
-    DrawText(blue_score.c_str(), 420, 200, 50, BLUE);
-
-    DrawText("Press SPACE to restart", 250, 400, 20, WHITE);
-}
-
 int main()
 {
     const int screen_width = 800;
     const int screen_height = 600;
-    const int bar_speed = 330;
     const char *winner = nullptr;
     int red_score = 0;
     int blue_score = 0;
     bool score_update = true;
 
-    // random bool for ball direction
-    std::srand(time(0));
-    bool random_bool{};
-    random_bool = (std::rand() % 2); // mod by 2 gives 0 or 1 which acts as true or false for ball direction
+    SetRandomSeed(time(0));
 
     // init window
     SetConfigFlags(FLAG_VSYNC_HINT);
     InitWindow(screen_width, screen_height, "Pong");
-    SetTargetFPS(144);
+    SetTargetFPS(60);
 
     // init game state
     GameScreen current_screen = TITLE;
 
-    // ----------init and load sound----------
+    // init sound
     InitAudioDevice();
     Sound hit = LoadSound("./assets/sound/hit.mp3");
-    Music title = LoadMusicStream("./assets/sound/title.mp3");
-    SetMasterVolume(0.9f);
-    // play title screen music
-    PlayMusicStream(title);
+    SetMasterVolume(1.0f);
 
-    // ----------init ball----------
+    // init ball
     Ball ball;
-    ball.position.x = GetScreenWidth() / 2;
-    ball.position.y = GetScreenHeight() / 2;
-    ball.speed.y = 300;
-    ball.radius = 6.0f;
-
-    // randomize ball direction at start (towards blue or towards red)
-    if (random_bool)
-    {
-        ball.speed.x = 200;
-    }
-    else
-    {
-        ball.speed.x = -200;
-    }
+    ball.Init();
 
     // init left player
     Bar leftBar;
-    leftBar.position.x = 40;
-    leftBar.position.y = GetScreenHeight() / 2;
+    leftBar.Init(40, GetScreenHeight() / 2);
 
     // init right player
     Bar rightBar;
-    rightBar.position.x = GetScreenWidth() - 40;
-    rightBar.position.y = GetScreenHeight() / 2;
+    rightBar.Init(GetScreenWidth() - 40, GetScreenHeight() / 2);
 
     // ----------game loop----------
     while (!WindowShouldClose())
     {
-        // Update music buffer with new stream data
-        UpdateMusicStream(title);
-
-        // if ENTER key pressed, start gameplay
-        if (current_screen == TITLE)
+        switch (current_screen)
+        {
+        // ----------title state, press ENTER to start----------
+        case TITLE:
         {
             if (IsKeyPressed(KEY_ENTER))
             {
                 current_screen = GAMEPLAY;
             }
         }
+        break;
 
-        if (current_screen == GAMEPLAY)
+        // ----------gameplay logic----------
+        case GAMEPLAY:
         {
-            // stop title screen music
-            StopMusicStream(title);
-
             // update ball position
-            ball.position.x += ball.speed.x * GetFrameTime();
-            ball.position.y += ball.speed.y * GetFrameTime();
+            ball.Update();
 
             // ----------check collision with the top----------
             if ((ball.position.y - ball.radius) < 0)
             {
-                ball.position.y = 6.0f;
-                ball.speed.y *= -1;
+                ball.Bounce();
             }
 
             // ----------check collision with the bottom----------
             if ((ball.position.y + ball.radius) > screen_height)
             {
-                ball.position.y = 594.0f;
-                ball.speed.y *= -1;
+                ball.Bounce();
             }
 
             // ----------control left bar----------
             if (IsKeyDown(KEY_W))
             {
-                leftBar.position.y -= bar_speed * GetFrameTime();
-                if (leftBar.position.y < 50)
-                {
-                    leftBar.position.y = 50;
-                }
+                leftBar.MoveUp();
             }
 
             if (IsKeyDown(KEY_S))
             {
-                leftBar.position.y += bar_speed * GetFrameTime();
-                if (leftBar.position.y > 550)
-                {
-                    leftBar.position.y = 550;
-                }
+                leftBar.MoveDown();
             }
 
             // ----------control right bar----------
             if (IsKeyDown(KEY_UP))
             {
-                rightBar.position.y -= bar_speed * GetFrameTime();
-                if (rightBar.position.y < 50)
-                {
-                    rightBar.position.y = 50;
-                }
+                rightBar.MoveUp();
             }
 
             if (IsKeyDown(KEY_DOWN))
             {
-                rightBar.position.y += bar_speed * GetFrameTime();
-                if (rightBar.position.y > 550)
-                {
-                    rightBar.position.y = 550;
-                }
+                rightBar.MoveDown();
             }
 
             // ----------collision: ball with bars----------
             if (CheckCollisionCircleRec(Vector2{ball.position.x, ball.position.y}, ball.radius, leftBar.GetSize()))
             {
                 PlaySound(hit);
-                if (ball.speed.x < 0)
+                if (ball.velocity.x < 0)
                 {
-                    ball.speed.x *= -1.08f;
-                    ball.speed.y = (ball.position.y - leftBar.position.y) / 50 * ball.speed.x;
+                    ball.velocity.x *= -1.08f;
+                    ball.velocity.y = (ball.position.y - leftBar.position.y) / 50 * ball.velocity.x;
                 }
             }
 
             if (CheckCollisionCircleRec(Vector2{ball.position.x, ball.position.y}, ball.radius, rightBar.GetSize()))
             {
                 PlaySound(hit);
-                if (ball.speed.x > 0)
+                if (ball.velocity.x > 0)
                 {
-                    ball.speed.x *= -1.08f;
-                    ball.speed.y = (ball.position.y - rightBar.position.y) / 50 * -ball.speed.x;
+                    ball.velocity.x *= -1.08f;
+                    ball.velocity.y = (ball.position.y - rightBar.position.y) / 50 * -ball.velocity.x;
                 }
             }
 
-            // ----------set winner----------
+            // ----------set winner and update score----------
             if (ball.position.x < 20)
             {
                 winner = "BLUE Wins!";
@@ -234,64 +249,35 @@ int main()
                 }
             }
 
+            // ----------press SPACE to pause----------
+            if (IsKeyPressed(KEY_SPACE) && (winner == nullptr))
+            {
+                current_screen = PAUSED;
+            }
+
             // ----------reset----------
             if (winner && IsKeyPressed(KEY_SPACE))
             {
-                // reset ball position
-                ball.position.x = GetScreenWidth() / 2;
-                ball.position.y = GetScreenHeight() / 2;
+                // reset ball position and velocity
+                ball.Init();
 
                 // reset bar position
-                leftBar.position.y = GetScreenHeight() / 2;
-                rightBar.position.y = GetScreenHeight() / 2;
+                leftBar.Reset();
+                rightBar.Reset();
 
                 // reset bools and winner
                 winner = nullptr;
                 score_update = true;
-                random_bool = (std::rand() % 2);
-
-                // reset ball speed
-                ball.speed.y = 300;
-                if (random_bool)
-                {
-                    ball.speed.x = 200;
-                }
-                else
-                {
-                    ball.speed.x = -200;
-                }
             }
         }
-
-        // ----------drawing----------
-        BeginDrawing();
-
-        ClearBackground(BLACK);
-
-        switch (current_screen)
-        {
-        case TITLE:
-        {
-            DrawRectangle(0, 0, screen_width, screen_height, BLACK);
-            DrawText("Pong!", 330, 80, 50, YELLOW);
-            DrawText("by Silly Catto", 280, 180, 30, RAYWHITE);
-            DrawText("Press ENTER to start", 270, 400, 20, BLUE);
-        }
         break;
-        case GAMEPLAY:
+
+        // ----------pause state, press SPACE to continue----------
+        case PAUSED:
         {
-            // draw ball
-            ball.Draw();
-            // Draw the bars
-            leftBar.Draw(RED);
-            rightBar.Draw(BLUE);
-
-            DrawFPS(10, 10);
-
-            // Declare winner and show score
-            if (winner)
+            if (IsKeyPressed(KEY_SPACE))
             {
-                DeclareWinner(winner, red_score, blue_score);
+                current_screen = GAMEPLAY;
             }
         }
         break;
@@ -299,13 +285,64 @@ int main()
             break;
         }
 
+        // ----------drawing begins----------
+        BeginDrawing();
+        ClearBackground(BLACK);
+
+        //----------title screen drawing----------
+        if (current_screen == TITLE)
+        {
+            DrawRectangle(0, 0, screen_width, screen_height, BLACK);
+            DrawText("Pong!", 330, 80, 50, YELLOW);
+            DrawText("by Silly Catto", 280, 180, 30, RAYWHITE);
+            DrawText("Press ENTER to start", 283, 400, 20, GRAY);
+        }
+
+        // ----------gameplay screen drawing----------
+        if ((current_screen == GAMEPLAY) || (current_screen == PAUSED))
+        {
+            // draw a line at the middle
+            DrawLine((screen_width / 2), 0, (screen_width / 2), screen_height, GRAY);
+            // draw ball
+            ball.Draw();
+            // Draw the bars
+            leftBar.Draw(RED);
+            rightBar.Draw(BLUE);
+
+            // ----------paused screen drawing----------
+            if ((current_screen == PAUSED) && (current_screen != GAMEPLAY))
+            {
+                DrawText("PAUSED", 317, 200, 40, GREEN);
+            }
+
+            // ----------declare winner and show score----------
+            if (winner)
+            {
+                char final_score[50];
+
+                strcpy(final_score, TextFormat("%i", red_score));
+                strcat(final_score, " - ");
+                strcat(final_score, TextFormat("%i", blue_score));
+
+                DrawLine((screen_width / 2), 0, (screen_width / 2), screen_height, BLACK);
+
+                // declare winner name (red/blue)
+                DrawText(winner,
+                        ((screen_width / 2) - (MeasureText(winner, 40) / 2)),
+                        GetScreenHeight() / 2 - 100,
+                        40,
+                        GetColor(winner));
+                // show score
+                DrawText(final_score, ((screen_width / 2) - (MeasureText(final_score, 50) / 2)), 280, 50, WHITE);
+                // show restart prompt
+                DrawText("Press SPACE to restart", 272, 450, 20, GRAY);
+            }
+        }
         EndDrawing();
     }
 
     // ----------unload and close----------
     UnloadSound(hit);
-    UnloadMusicStream(title);
-
     CloseAudioDevice();
     CloseWindow();
 
