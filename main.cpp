@@ -7,7 +7,7 @@ class Ball
 {
 private:
     // random bool for ball direction (mod by 2 gives 0 or 1 which acts as true or false for ball direction)
-    bool ball_direction = (std::rand() % 2);
+    bool ball_direction{};
 
 public:
     Vector2 position;
@@ -16,6 +16,7 @@ public:
 
     void Init()
     {
+        ball_direction = (std::rand() % 2);
         position.x = GetScreenWidth() / 2;
         position.y = GetScreenHeight() / 2;
         speed.y = 300;
@@ -40,23 +41,6 @@ public:
     }
 
     void Bounce() { speed.y *= -1; }
-
-    void Reset()
-    {
-        ball_direction = (std::rand() % 2);
-        // reset ball position and speed
-        position.x = GetScreenWidth() / 2;
-        position.y = GetScreenHeight() / 2;
-        speed.y = 300;
-        if (ball_direction)
-        {
-            speed.x = 200;
-        }
-        else
-        {
-            speed.x = -200;
-        }
-    }
 };
 
 class Bar
@@ -70,6 +54,12 @@ public:
     Rectangle GetSize() { return Rectangle{position.x - 10 / 2, position.y - 100 / 2, 10, 100}; }
 
     void Draw(Color color) { DrawRectangleRec(GetSize(), color); }
+
+    void Init(int pos_x, int pos_y)
+    {
+        this->position.x = pos_x;
+        this->position.y = pos_y;
+    }
 
     void MoveUp()
     {
@@ -89,16 +79,14 @@ public:
         }
     }
 
-    void Reset()
-    {
-        position.y = GetScreenHeight() / 2;
-    }
+    void Reset() { position.y = GetScreenHeight() / 2; }
 };
 
 enum GameScreen
 {
     TITLE = 0,
-    GAMEPLAY
+    GAMEPLAY,
+    PAUSED
 };
 
 Color GetColor(const char *text)
@@ -123,6 +111,7 @@ int main()
     int red_score = 0;
     int blue_score = 0;
     bool score_update = true;
+    std::srand(time(0));
 
     // init window
     SetConfigFlags(FLAG_VSYNC_HINT);
@@ -132,27 +121,23 @@ int main()
     // init game state
     GameScreen current_screen = TITLE;
 
-    // ----------init and load sound----------
+    // init sound
     InitAudioDevice();
     Sound hit = LoadSound("./assets/sound/hit.mp3");
     Music title = LoadMusicStream("./assets/sound/title.mp3");
     SetMasterVolume(0.9f);
-    // play title screen music
-    PlayMusicStream(title);
 
-    // ----------init ball----------
+    // init ball
     Ball ball;
     ball.Init();
 
     // init left player
     Bar leftBar;
-    leftBar.position.x = 40;
-    leftBar.position.y = GetScreenHeight() / 2;
+    leftBar.Init(40, GetScreenHeight() / 2);
 
     // init right player
     Bar rightBar;
-    rightBar.position.x = GetScreenWidth() - 40;
-    rightBar.position.y = GetScreenHeight() / 2;
+    rightBar.Init(GetScreenWidth() - 40, GetScreenHeight() / 2);
 
     // ----------game loop----------
     while (!WindowShouldClose())
@@ -160,14 +145,22 @@ int main()
         // Update music buffer with new stream data
         UpdateMusicStream(title);
 
-        //----------title screen, if ENTER key pressed, start gameplay----------
-        if ((current_screen == TITLE) && (IsKeyPressed(KEY_ENTER)))
+        switch (current_screen)
         {
-            current_screen = GAMEPLAY;
+        // ----------title state, press ENTER to start----------
+        case TITLE:
+        {
+            // play title screen music
+            PlayMusicStream(title);
+            if (IsKeyPressed(KEY_ENTER))
+            {
+                current_screen = GAMEPLAY;
+            }
         }
+        break;
 
-        // ----------game logic----------
-        if (current_screen == GAMEPLAY)
+        // ----------gameplay logic----------
+        case GAMEPLAY:
         {
             // stop title screen music
             StopMusicStream(title);
@@ -251,11 +244,17 @@ int main()
                 }
             }
 
+            // ----------press SPACE to pause----------
+            if (IsKeyPressed(KEY_SPACE) && (winner == nullptr))
+            {
+                current_screen = PAUSED;
+            }
+
             // ----------reset----------
             if (winner && IsKeyPressed(KEY_SPACE))
             {
                 // reset ball position and speed
-                ball.Reset();
+                ball.Init();
 
                 // reset bar position
                 leftBar.Reset();
@@ -266,23 +265,37 @@ int main()
                 score_update = true;
             }
         }
+        break;
 
-        // ----------drawing----------
+        // ----------pause state, press SPACE to continue----------
+        case PAUSED:
+        {
+            if (IsKeyPressed(KEY_SPACE))
+            {
+                current_screen = GAMEPLAY;
+            }
+        }
+        break;
+        default:
+            break;
+        }
+
+        // ----------drawing begins----------
         BeginDrawing();
 
         ClearBackground(BLACK);
 
-        switch (current_screen)
-        {
-        case TITLE:
+        //----------title screen drawing----------
+        if (current_screen == TITLE)
         {
             DrawRectangle(0, 0, screen_width, screen_height, BLACK);
             DrawText("Pong!", 330, 80, 50, YELLOW);
             DrawText("by Silly Catto", 280, 180, 30, RAYWHITE);
             DrawText("Press ENTER to start", 270, 400, 20, BLUE);
         }
-        break;
-        case GAMEPLAY:
+
+        // ----------gameplay screen drawing----------
+        if ((current_screen == GAMEPLAY) || (current_screen == PAUSED))
         {
             // draw a line at the middle
             DrawLine((screen_width / 2), 0, (screen_width / 2), screen_height, GRAY);
@@ -294,7 +307,13 @@ int main()
 
             DrawFPS(10, 10);
 
-            // Declare winner and show score
+            // ----------paused screen drawing----------
+            if ((current_screen == PAUSED) && (current_screen != GAMEPLAY))
+            {
+                DrawText("PAUSED", 317, 200, 40, GREEN);
+            }
+
+            // ----------declare winner and show score----------
             if (winner)
             {
                 std::string red_score_string = std::to_string(red_score);
@@ -310,10 +329,6 @@ int main()
                 DrawText("Press SPACE to restart", 250, 400, 20, WHITE);
             }
         }
-        break;
-        default:
-            break;
-        }
 
         EndDrawing();
     }
@@ -321,7 +336,6 @@ int main()
     // ----------unload and close----------
     UnloadSound(hit);
     UnloadMusicStream(title);
-
     CloseAudioDevice();
     CloseWindow();
 
